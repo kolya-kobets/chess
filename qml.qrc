@@ -1,0 +1,20 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>BoardSign.qml</file>
+    </qresource>
+    <qresource prefix="/img">
+        <file>assets/bk_bishop.png</file>
+        <file>assets/bk_castle.png</file>
+        <file>assets/bk_king.png</file>
+        <file>assets/bk_knight.png</file>
+        <file>assets/bk_pawn.png</file>
+        <file>assets/bk_queen.png</file>
+        <file>assets/wt_bishop.png</file>
+        <file>assets/wt_castle.png</file>
+        <file>assets/wt_king.png</file>
+        <file>assets/wt_knight.png</file>
+        <file>assets/wt_pawn.png</file>
+        <file>assets/wt_queen.png</file>
+    </qresource>
+</RCC>
