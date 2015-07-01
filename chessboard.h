@@ -74,17 +74,16 @@ private:
     std::shared_ptr<ChessPieceMove> knight_move(const vec2& src, const vec2& dst) const;
     std::shared_ptr<ChessPieceMove> queen_move(const vec2& src, const vec2& dst);
     //src2 & dst2 is used if castling
-    std::shared_ptr<ChessPieceMove> move_king(const vec2& src, const vec2& dst, vec2& src2, vec2& dst2);
+    std::shared_ptr<ChessPieceMove> king_move(const vec2& src, const vec2& dst);
 
-    std::shared_ptr<ChessPieceMove> simple_move(const vec2& src, const vec2& dst, bool *first_move = NULL) const;
-    bool* get_castle_first_move_flag(const vec2& src);
+    std::shared_ptr<ChessPieceMove> simple_move(const vec2& src, const vec2& dst) const;
 
     ChessPiece m_chess_board[8][8];
 
     static const int BLACK = 0;
     static const int WHITE = 1;
-    bool m_is_king_moved[2];
-    bool m_is_castle_moved[2][2]; //[0-black,1-white][0-a,1-h]
+    bool m_is_king_1st_move[2];
+    bool m_is_castle_1st_move[2][2]; //[0-black,1-white][0-a,1-h]
     int m_current_side;
 };
 #endif // CHESSBOARD_H

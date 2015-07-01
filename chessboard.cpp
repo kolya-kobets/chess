@@ -30,17 +30,27 @@ std::shared_ptr<ChessPieceMove> ChessBoard::make_move(const std::pair<int,int>& 
     vec2 src = make_vec2(from);
     vec2 dst = make_vec2(to);
     ChessPiece piece = m_chess_board[src[0]][src[1]];
+    ChessPiece dst_piece = m_chess_board[dst[0]][dst[1]];
+
     if( (m_current_side == WHITE && is_black(piece)) || (m_current_side == BLACK && is_white(piece)) ) {
         return shared_ptr<ChessPieceMove>(NULL);
     }
 
     auto result = shared_ptr<ChessPieceMove>(NULL);
 
+    bool* ft_move = NULL;
+    bool* ft_move2 = NULL;
+
     switch( piece ) {
         case WT_PAWN: case BK_PAWN:
             result = pawn_move(src,dst);
             break;
         case WT_CASTLE: case BK_CASTLE:
+            if( src[1] == A) {
+                ft_move = m_is_castle_1st_move[piece != BK_CASTLE];
+            } else if( src[1] == H ) {
+                ft_move = m_is_castle_1st_move[piece != BK_CASTLE]+1;
+            }
             result = castle_move(src,dst);
             break;
         case WT_BISHOP: case BK_BISHOP:
@@ -53,19 +63,9 @@ std::shared_ptr<ChessPieceMove> ChessBoard::make_move(const std::pair<int,int>& 
             result = queen_move(src,dst);
             break;
         case WT_KING: case BK_KING: {
-            /*vec2 src2 = make_vec2(from2);
-            vec2 dst2 = make_vec2(to2);
-            result = move_king(src,dst, src2, dst2);
-            // in case of castling all actions have been performed
-            if(result == CASTLING) {
-                m_current_side = 1-m_current_side;
-                m_is_king_moved[piece == WT_KING] = true;
-                from2 = make_pair(src2[0],src2[1]);
-                to2 = make_pair(dst2[0],dst2[1]);
-                res = make_pair(piece, m_chess_board[dst2[0]][dst2[1]]);
-                return CASTLING;
-            }
-            */
+            result = king_move(src,dst);
+            ft_move = &m_is_king_1st_move[piece != BK_KING];
+
             break;
         }
         case NONE:
@@ -73,17 +73,26 @@ std::shared_ptr<ChessPieceMove> ChessBoard::make_move(const std::pair<int,int>& 
             break;
     }
 
-    if( !result || !result->apply(m_chess_board, *this) ) {
+    switch(dst_piece) {
+        case WT_CASTLE: case BK_CASTLE:
+            if( dst[1] == A) {
+                ft_move2 = m_is_castle_1st_move[piece != BK_CASTLE];
+            } else if( dst[1] == H ) {
+                ft_move2 = m_is_castle_1st_move[piece != BK_CASTLE]+1;
+            }
+            break;
+        case WT_KING: case BK_KING:
+            ft_move2 = &m_is_king_1st_move[piece != BK_KING];
+            break;
+        default:
+            break;
+    }
+
+    if( !result || !result->apply(m_chess_board, *this, ft_move, ft_move2) ) {
         return result;
     }
 
-    //res = tmp;
     m_current_side = 1-m_current_side;
-    //check_castle_first_move(src, piece);
-
-    //if(piece == WT_KING || piece == BK_KING) {
-//        m_is_king_moved[piece == WT_KING] = true;
-  //  }
 
     return result;
 }
@@ -158,7 +167,7 @@ std::shared_ptr<ChessPieceMove> ChessBoard::castle_move(const vec2& src, const v
             }
         }
     }
-    return simple_move(src,dst,get_castle_first_move_flag(src));
+    return simple_move(src,dst);
 }
 
 std::shared_ptr<ChessPieceMove> ChessBoard::bishop_move(const vec2& from, const vec2& to)
@@ -199,90 +208,30 @@ std::shared_ptr<ChessPieceMove> ChessBoard::queen_move(const vec2& src, const ve
     return result;
 }
 
-std::shared_ptr<ChessPieceMove> ChessBoard::move_king(const vec2& src, const vec2& dst, vec2& src2, vec2& dst2)
+std::shared_ptr<ChessPieceMove> ChessBoard::king_move(const vec2& src, const vec2& dst)
 {
-    /*
     if( abs(src[0]-dst[0]) <=1 && abs(src[1]-dst[1]) <=1 ) {
-        return check_replace(src,dst);
+        return simple_move(src,dst);
     }
-    ChessPiece src_piece = m_chess_board[src[0]][src[1]];
-    //ChessPiece dst_piece = m_chess_board[dst[0]][dst[1]];
-    //check whether it's castling
-    const int side = (src_piece == WT_KING) ? WHITE : BLACK;
-    const int row = (side == WHITE) ? 0 : 7;
-    if( src[0] != row || dst[0] != row || m_is_king_moved[side] ) {
-        return WRONG;
+    ChessPiece king = m_chess_board[src[0]][src[1]];
+    ChessPiece castle = m_chess_board[dst[0]][dst[1]];
+    if( castle == WT_CASTLE || castle == BK_CASTLE ){
+        return make_shared<Castling>(src, king, dst, castle);
+    } else {
+        return shared_ptr<ChessPieceMove>(NULL);
     }
-    if( !(( dst[1] == A  && !m_is_castle_moved[side][0] ) ||
-          ( dst[1] == H  && !m_is_castle_moved[side][1] )) ) {
-        return WRONG;
-    }
-    int inc = (dst[1] == H) ? 1 : -1;
-    //check that there is no piece between king & castle
-    for(int i=src[1]+inc; i != dst[1]; i+=inc) {
-        if(m_chess_board[row][i] != NONE) {
-            return WRONG;
-        }
-    }
-
-    int king_cln = src[1];
-    if(is_king_under_attack()) {
-        return WRONG;
-    }
-    for(int i=0; i<2; i++) {
-        king_cln+=inc;
-        std::swap(m_chess_board[row][king_cln-inc],m_chess_board[row][king_cln]);
-        if(is_king_under_attack()) {
-            std::swap(m_chess_board[row][src[1]],m_chess_board[row][king_cln]);
-            return WRONG;
-        }
-    }
-
-    src2 = make_vec2(row,king_cln);
-    dst2 = make_vec2(row,king_cln-inc);
-    std::swap(m_chess_board[row][dst[1]], m_chess_board[row][dst2[1]]);
-
-    return CASTLING;
-    */
-    return shared_ptr<ChessPieceMove>(NULL);
 }
 
-std::shared_ptr<ChessPieceMove> ChessBoard::simple_move(const vec2& src, const vec2& dst, bool *first_move) const
+std::shared_ptr<ChessPieceMove> ChessBoard::simple_move(const vec2& src, const vec2& dst) const
 {
     ChessPiece src_piece = m_chess_board[src[0]][src[1]];
     ChessPiece dst_piece = m_chess_board[dst[0]][dst[1]];
-    if( dst_piece != NONE &&(is_black(src_piece) && is_black(dst_piece)) || (is_white(src_piece) && is_white(dst_piece)) ) {
+    if( dst_piece != NONE && ((is_black(src_piece) && is_black(dst_piece)) || (is_white(src_piece) && is_white(dst_piece))) ) {
         return shared_ptr<ChessPieceMove>(NULL);
     } else {
-        return make_shared<SimpleMove>(src,src_piece,dst,dst_piece,first_move);
+        return make_shared<SimpleMove>(src,src_piece,dst,dst_piece);
     }
 }
-
-
-bool* ChessBoard::get_castle_first_move_flag(const vec2& src)
-{
-    ChessPiece cp = m_chess_board[src[0]][src[1]];
-    if( cp == WT_CASTLE ) {
-        if( src[0] == 0 ) {
-            if( src[1] == A ) {
-                return m_is_castle_moved[WHITE];
-            } else if( src[1] == H ) {
-                return m_is_castle_moved[WHITE]+1;
-            }
-        }
-    } else if ( cp == BK_CASTLE ) {
-        if( src[0] == 7 ) {
-            if( src[1] == A ) {
-                return m_is_castle_moved[BLACK];
-            } else if( src[1] == H ) {
-                return m_is_castle_moved[BLACK]+1;
-            }
-        }
-    }
-    return NULL;
-}
-
-
 
 bool ChessBoard::is_king_under_attack() const
 {
@@ -308,9 +257,9 @@ void ChessBoard::reset_board()
         m_chess_board[6][i] = BK_PAWN;
     }
 
-    std::fill_n(m_is_king_moved,2, false);
-    std::fill_n(m_is_castle_moved[0],2, false);
-    std::fill_n(m_is_castle_moved[1],2, false);
+    std::fill_n(m_is_king_1st_move,2, true);
+    std::fill_n(m_is_castle_1st_move[0],2, true);
+    std::fill_n(m_is_castle_1st_move[1],2, true);
 
     m_current_side = WHITE;
 }
