@@ -2,7 +2,7 @@
 #define CHESSBOARD_H
 
 #include <utility>
-
+#include <memory>
 
 struct vec2
 {
@@ -17,9 +17,14 @@ inline vec2 make_vec2(int v1, int v2)       {   return vec2(v1,v2);  }
 inline vec2 make_vec2(std::pair<int,int> v) {   return vec2(v.first,v.second);  }
 
 
+class ChessPieceMove;
+
 class ChessBoard
 {
 public:
+    static const int ROWS = 8;
+    static const int COLS = 8;
+
     enum Column{
         A=0,B,C,D,E,F,G,H
     };
@@ -60,20 +65,19 @@ public:
 
     //first 3 parameters - for common case,
     // 4,5 - in case of castling
-    MoveResult make_move(const std::pair<int,int>& src, const std::pair<int,int>& dst, std::pair<ChessPiece,ChessPiece>& res,
-                         std::pair<int,int>& src2, std::pair<int,int>& dst2);
-private:
-    MoveResult is_pawn_move_allowed(const vec2& src, const vec2& dst) const;
-    MoveResult check_move_as_castle(const vec2& src, const vec2& dst) const;
-    MoveResult check_move_as_bishop(const vec2& src, const vec2& dst) const;
-    MoveResult check_knight_move(const vec2& src, const vec2& dst) const;
-    MoveResult check_queen_move(const vec2& src, const vec2& dst) const;
-    //src2 & dst2 is used if castling
-    MoveResult move_king(const vec2& src, const vec2& dst, vec2& src2, vec2& dst2);
-
-    MoveResult check_replace(const vec2& src, const vec2& dst) const;
-    void check_castle_first_move(const vec2& from, ChessPiece cp);
+    std::shared_ptr<ChessPieceMove> make_move(const std::pair<int,int>& src, const std::pair<int,int>& dst);
     bool is_king_under_attack() const;
+private:
+    std::shared_ptr<ChessPieceMove> pawn_move(const vec2& src, const vec2& dst) const;
+    std::shared_ptr<ChessPieceMove> castle_move(const vec2& src, const vec2& dst);
+    std::shared_ptr<ChessPieceMove> bishop_move(const vec2& src, const vec2& dst);
+    std::shared_ptr<ChessPieceMove> knight_move(const vec2& src, const vec2& dst) const;
+    std::shared_ptr<ChessPieceMove> queen_move(const vec2& src, const vec2& dst);
+    //src2 & dst2 is used if castling
+    std::shared_ptr<ChessPieceMove> move_king(const vec2& src, const vec2& dst, vec2& src2, vec2& dst2);
+
+    std::shared_ptr<ChessPieceMove> simple_move(const vec2& src, const vec2& dst, bool *first_move = NULL) const;
+    bool* get_castle_first_move_flag(const vec2& src);
 
     ChessPiece m_chess_board[8][8];
 

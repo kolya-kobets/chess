@@ -4,7 +4,8 @@ QT += qml quick
 
 SOURCES += main.cpp \
     chessfieldmodel.cpp \
-    chessboard.cpp
+    chessboard.cpp \
+    chesspiecemove.cpp
 
 RESOURCES += qml.qrc
 
@@ -19,6 +20,7 @@ include(deployment.pri)
 
 HEADERS += \
     chessfieldmodel.h \
-    chessboard.h
+    chessboard.h \
+    chesspiecemove.h
 
 

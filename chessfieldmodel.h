@@ -7,6 +7,7 @@
 
 #include <utility>
 #include "chessboard.h"
+#include "chesspiecemove.h"
 
 class ChessFieldModel : public QAbstractListModel
 {

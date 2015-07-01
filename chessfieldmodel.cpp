@@ -1,4 +1,5 @@
 #include "chessfieldmodel.h"
+
 #include <utility>
 #include <string>
 #include <iostream>
@@ -68,50 +69,31 @@ void ChessFieldModel::make_move(int src_cell, int dst_cell)
     auto src = std::make_pair(7 - src_cell/8, src_cell%8);
     auto dst = std::make_pair(7 - dst_cell/8, dst_cell%8);
 
-    auto from_board_to_list = [](const std::pair<int,int>& ind)->int {
-        return (7-ind.first)*8+ind.second;
+    auto from_board_to_list = [](const vec2& ind)->int {
+        return (7-ind[0])*8+ind[1];
     };
 
-    std::pair<int,int> src2, dst2; //for castling
-    auto pieces = std::make_pair(m_chess_board.get_board_piece(src.first, src.second),
-                                 m_chess_board.get_board_piece(dst.first, dst.second));
-
-    ChessBoard::MoveResult res = m_chess_board.make_move(src, dst, pieces, src2, dst2);
-    if( res & ChessBoard::WRONG ) {
-        return;
+    auto res = m_chess_board.make_move(src, dst);
+    if( !res ) {
+        return ;
     }
+
     QVector<int> roles(1, IMAGE_PATH);
-    if( res & ChessBoard::CASTLING ) {
-        m_list[src_cell].second = m_chess_piece_images[ChessBoard::NONE];
-        m_list[dst_cell].second = m_chess_piece_images[ChessBoard::NONE];
-        int src_cell2 = from_board_to_list(src2);
-        int dst_cell2 = from_board_to_list(dst2);
-        m_list[src_cell2].second = m_chess_piece_images[pieces.first];
-        m_list[dst_cell2].second = m_chess_piece_images[pieces.second];
+    const int count = res->changed_cells_count();
+    auto cells = res->get_changed_cells();
 
-        emit dataChanged(index(src_cell), index(src_cell), roles);
-        emit dataChanged(index(dst_cell), index(dst_cell), roles);
-        emit dataChanged(index(src_cell2), index(src_cell2), roles);
-        emit dataChanged(index(dst_cell2), index(dst_cell2), roles);
-
-    } else {
-        m_list[src_cell].second = m_chess_piece_images[pieces.first];
-        m_list[dst_cell].second = m_chess_piece_images[pieces.second];
+    for(int i=0; i<count; i++) {
+        ChessBoard::ChessPiece cp = cells[i].second;
+        int ind = from_board_to_list(cells[i].first);
+        m_list[ind].second = m_chess_piece_images[cp];
+        emit dataChanged(index(ind), index(ind), roles);
     }
-    emit dataChanged(index(src_cell), index(src_cell), roles);
-    emit dataChanged(index(dst_cell), index(dst_cell), roles);
 }
 
 bool ChessFieldModel::load_file(QUrl file)
 {
     QString path = file.path();
 
-    std::wstring str( (wchar_t*)path.unicode(), path.length() );
-    std::string str2 = path.toStdString();
-    wchar_t tmp[100];
-    std::copy(str.begin(), str.end(),tmp);
-    //std::wclog <<  str << L"\n";l
-    std::wcout << L"C++ out: "<< str << std::endl;
 
     return false;
 }
