@@ -3,6 +3,12 @@
 #include <utility>
 #include <string>
 #include <iostream>
+#include <fstream>
+
+inline int from_board_to_list(const vec2& ind)
+{
+    return (7-ind[0])*8+ind[1];
+}
 
 ChessFieldModel::ChessFieldModel(QObject *parent) :
     QAbstractListModel(parent), m_chess_piece_images(ChessBoard::BK_PAWN+1)
@@ -42,23 +48,13 @@ ChessFieldModel::ChessFieldModel(QObject *parent) :
 void ChessFieldModel::reset_board()
 {
     m_chess_board.reset_board();
-    QList<std::pair<QString,QString> >::iterator iter = m_list.begin();
-    for(int i=0; iter != m_list.end(); i++, iter++) {
-        iter->second = m_chess_piece_images[m_chess_board.get_board_piece(7 - i / 8, i % 8)];
-    }
-    QVector<int> roles(1, IMAGE_PATH);
-    emit dataChanged(index(0), index(m_list.size()-1), roles);
+    update_model();
 }
 
 void ChessFieldModel::clean_board()
 {
     m_chess_board.clean_board();
-    QList<std::pair<QString,QString> >::iterator iter = m_list.begin();
-    for(int i=0; iter != m_list.end(); i++, iter++) {
-        iter->second = m_chess_piece_images[ChessBoard::NONE];
-    }
-    QVector<int> roles(1, IMAGE_PATH);
-    emit dataChanged(index(0), index(m_list.size()-1), roles);
+    update_model();
 }
 
 void ChessFieldModel::make_move(int src_cell, int dst_cell)
@@ -69,33 +65,67 @@ void ChessFieldModel::make_move(int src_cell, int dst_cell)
     auto src = std::make_pair(7 - src_cell/8, src_cell%8);
     auto dst = std::make_pair(7 - dst_cell/8, dst_cell%8);
 
-    auto from_board_to_list = [](const vec2& ind)->int {
-        return (7-ind[0])*8+ind[1];
-    };
-
     auto res = m_chess_board.make_move(src, dst);
     if( !res ) {
         return ;
     }
-
-    QVector<int> roles(1, IMAGE_PATH);
-    const int count = res->changed_cells_count();
-    auto cells = res->get_changed_cells();
-
-    for(int i=0; i<count; i++) {
-        ChessBoard::ChessPiece cp = cells[i].second;
-        int ind = from_board_to_list(cells[i].first);
-        m_list[ind].second = m_chess_piece_images[cp];
-        emit dataChanged(index(ind), index(ind), roles);
-    }
+    update_cells(res);
 }
 
-bool ChessFieldModel::load_file(QUrl file)
+bool ChessFieldModel::save_game(QUrl file)
 {
-    QString path = file.path();
-
-
+    QString qstr = file.path();
+    QByteArray ba = qstr.toLatin1();
+    const char *fname = ba.data();
+    if(!fname || !*fname) {
+        return false;
+    }
+    //const char* fname = qstr.toUtf8().constData();
+    std::ofstream out(fname+1);
+    if(out) {
+        bool ret = m_chess_board.save_game(out);
+        out.close();
+        return ret;
+    }
     return false;
+}
+bool ChessFieldModel::load_game(QUrl file)
+{
+    QString qstr = file.path();
+    QByteArray ba = qstr.toLatin1();
+    const char *fname = ba.data();
+    if(!fname || !*fname) {
+        return false;
+    }
+    std::ifstream in(fname+1);// because of trailing '/'
+    if(in) {
+        bool ret = m_chess_board.load_game(in);
+        in.close();
+        update_model();
+        return ret;
+    }
+    return false;
+}
+
+
+bool ChessFieldModel::undo()
+{
+    auto res = m_chess_board.undo();
+    if( !res ) {
+        return false;
+    }
+    update_cells(res);
+    return true;
+}
+
+bool ChessFieldModel::redo()
+{
+    auto res = m_chess_board.redo();
+    if( !res ) {
+        return false;
+    }
+    update_cells(res);
+    return true;
 }
 
 QVariantMap ChessFieldModel::get(int row) const
@@ -107,7 +137,7 @@ QVariantMap ChessFieldModel::get(int row) const
     }
     return res;
 }
-
+/*
 void ChessFieldModel::setImagePath(int row, const QVariant& val)
 {
     if( row < 0 || row > m_list.count() ) {
@@ -121,7 +151,7 @@ void ChessFieldModel::setImagePath(int row, const QVariant& val)
 
     emit dataChanged(index, index, roles);
 }
-
+*/
 QVariant ChessFieldModel::data(const QModelIndex &index, int role) const
 {
     if( index.row() < 0 || index.row() > m_list.count() ) {
@@ -154,4 +184,28 @@ bool ChessFieldModel::setData(const QModelIndex &index, const QVariant &value, i
         default:
             return false;
     }
+}
+
+void ChessFieldModel::update_cells(std::shared_ptr<ChessPieceMove> move)
+{
+    QVector<int> roles(1, IMAGE_PATH);
+    const int count = move->changed_cells_count();
+    auto cells = move->get_changed_cells();
+
+    for(int i=0; i<count; i++) {
+        ChessBoard::ChessPiece cp = cells[i].second;
+        int ind = from_board_to_list(cells[i].first);
+        m_list[ind].second = m_chess_piece_images[cp];
+        emit dataChanged(index(ind), index(ind), roles);
+    }
+}
+
+void ChessFieldModel::update_model()
+{
+    QList<std::pair<QString,QString> >::iterator iter = m_list.begin();
+    for(int i=0; iter != m_list.end(); i++, iter++) {
+        iter->second = m_chess_piece_images[m_chess_board.get_board_piece(7 - i / 8, i % 8)];
+    }
+    QVector<int> roles(1, IMAGE_PATH);
+    emit dataChanged(index(0), index(m_list.size()-1), roles);
 }

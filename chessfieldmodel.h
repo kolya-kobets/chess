@@ -21,31 +21,26 @@ public:
     virtual ~ChessFieldModel(){}
 
     Q_INVOKABLE QVariantMap get(int row) const;
-    Q_INVOKABLE void setImagePath(int row, const QVariant& val);
+    //Q_INVOKABLE void setImagePath(int row, const QVariant& val);
 
     Q_INVOKABLE void clean_board();
     Q_INVOKABLE void reset_board();
     Q_INVOKABLE void make_move(int src_cell, int dest_cell);
-    Q_INVOKABLE bool load_file(QUrl file);
+    Q_INVOKABLE bool load_game(QUrl file);
+    Q_INVOKABLE bool save_game(QUrl file);
+    Q_INVOKABLE bool undo();
+    Q_INVOKABLE bool redo();
 
 
     virtual QHash<int,QByteArray> roleNames() const                                     {   return m_role_names;    }
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const               {    Q_UNUSED(parent); return m_list.count();   }
     virtual int columnCount(const QModelIndex &parent = QModelIndex()) const            {    Q_UNUSED(parent); return 1;    }
     virtual QVariant data(const QModelIndex &index, int role) const;
-
     virtual bool setData(const QModelIndex &index, const QVariant &value, int role);
-
-    Qt::ItemFlags flags(const QModelIndex &index) const
-    {
-        /*
-        if (!index.isValid())
-            return Qt::ItemIsEnabled;
-        return QAbstractListModel::flags(index) | Qt::ItemIsEditable;
-        */
-        Q_UNUSED(index);
-        return Qt::ItemIsEditable;
-    }
+    Qt::ItemFlags flags(const QModelIndex &index) const                                 {  Q_UNUSED(index); return Qt::ItemIsEditable;    }
+private:
+    void update_cells(std::shared_ptr<ChessPieceMove> move);
+    void update_model();
 
 
 signals:

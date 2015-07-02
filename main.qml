@@ -174,10 +174,10 @@ Window {
        width : 80
        anchors { top: start_btn.bottom; left: chess_board.right; margins : 20 }
        function load_game() {
-           file_dialog.open()
+           load_file_dialog.open()
        }
        function save_game() {
-           //file_dialog.open()
+           save_file_dialog.open()
        }
        states:[
            State{
@@ -195,26 +195,61 @@ Window {
        ]
    }
 
+
+   Button {
+       text : "Prev"
+       id : prev_btn
+       width : 80
+       anchors { top: load_btn.bottom; left: chess_board.right; margins : 20 }
+       onClicked : {
+           chess_board_model.undo()
+       }
+       states:[
+           State{
+               name : "hide"
+               when : main_window.current_screen == 1
+               PropertyChanges { target : prev_btn; visible:  false }
+           }
+       ]
+
+   }
+
+   Button {
+       text : "Next"
+       id : next_btn
+       width : 80
+       anchors { top: prev_btn.bottom; left: chess_board.right; margins : 20 }
+       onClicked : {
+           chess_board_model.redo()
+       }
+       states:[
+           State{
+               name : "hide"
+               when : main_window.current_screen == 1
+               PropertyChanges { target : next_btn; visible:  false }
+           }
+       ]
+   }
+
    Item {
        id : dragged_piece
-       //anchors.left: chess_field.left
        Image {
            id : dragged_item
            width : chess_field.cellWidth;
            height : chess_field.cellHeight
            source : ""
        }
-       //width : chess_field.cellWidth
-       //height : chess_field.cellHeight
    }
 
 
    FileDialog {
-       id: file_dialog
+       id: load_file_dialog
        title: "Please choose a file"
+       selectExisting : true
+       selectMultiple : false
        onAccepted: {
-           console.log("You chose: " + file_dialog.fileUrl)
-           chess_board_model.load_file(file_dialog.fileUrl)
+           console.log("You chose: " + load_file_dialog.fileUrl)
+           chess_board_model.load_game(load_file_dialog.fileUrl)
            main_window.current_screen = 2
        }
        onRejected: {
@@ -222,10 +257,19 @@ Window {
        }
    }
 
+   FileDialog {
+       id: save_file_dialog
+       title: "Specify file name"
+       selectExisting : false
+       selectMultiple : false
+       onAccepted: {
+           chess_board_model.save_game(save_file_dialog.fileUrl)
+       }
+       onRejected: {
+           console.log("Canceled")
+       }
+   }
+
    property int current_screen: 1
-   /*Rectangle {
-        id : pause
-        anchors.left : chess_board.right
-        anchors.top : parent.right
-    }*/
+
 }

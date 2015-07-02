@@ -3,6 +3,8 @@
 
 #include <utility>
 #include <memory>
+#include <list>
+#include <iostream>
 
 struct vec2
 {
@@ -42,19 +44,12 @@ public:
         BK_BISHOP,
         BK_KNIGHT,
         BK_CASTLE,
-        BK_PAWN
+        BK_PAWN,
+        PIECES_COUNT
     };
 
-    enum MoveResult {
-        WRONG     = 1,
-        SIMPLE    = 2,
-        CASTLING  = 4,
-        REPLACE   = 8,
-        PROMOTION = 16 // for now pawn is replaced by queen only
-    }; //2^n because of replace & promotion
-
 public:
-    ChessBoard(){   reset_board();  }
+    ChessBoard()                            {   clean_board();  }
     void reset_board();
     void clean_board();
 
@@ -66,6 +61,13 @@ public:
     //first 3 parameters - for common case,
     // 4,5 - in case of castling
     std::shared_ptr<ChessPieceMove> make_move(const std::pair<int,int>& src, const std::pair<int,int>& dst);
+
+    std::shared_ptr<ChessPieceMove> undo();
+    std::shared_ptr<ChessPieceMove> redo();
+
+    bool save_game(std::ostream& stream);
+    bool load_game(std::istream& stream);
+
     bool is_king_under_attack() const;
 private:
     std::shared_ptr<ChessPieceMove> pawn_move(const vec2& src, const vec2& dst) const;
@@ -79,11 +81,16 @@ private:
     std::shared_ptr<ChessPieceMove> simple_move(const vec2& src, const vec2& dst) const;
 
     ChessPiece m_chess_board[8][8];
+    bool m_1st_move_flags[8][8];
 
     static const int BLACK = 0;
     static const int WHITE = 1;
-    bool m_is_king_1st_move[2];
-    bool m_is_castle_1st_move[2][2]; //[0-black,1-white][0-a,1-h]
+
     int m_current_side;
+
+    typedef std::list<std::shared_ptr<ChessPieceMove> > PieceMoves;
+    PieceMoves m_moves;
+    PieceMoves::iterator m_current_move;
 };
+
 #endif // CHESSBOARD_H
