@@ -11,7 +11,7 @@ inline int from_board_to_list(const vec2& ind)
 }
 
 ChessFieldModel::ChessFieldModel(QObject *parent) :
-    QAbstractListModel(parent), m_chess_piece_images(ChessBoard::BK_PAWN+1)
+    QAbstractListModel(parent), m_chess_piece_images(to_int(ChessPiece::BK_PAWN)+1)
 {
     m_role_names[CELL_COLOR] = "cell_color";
     m_role_names[IMAGE_PATH] = "image_path";
@@ -27,20 +27,20 @@ ChessFieldModel::ChessFieldModel(QObject *parent) :
         }
     }
 
-    m_chess_piece_images[ChessBoard::NONE]      = "";
-    m_chess_piece_images[ChessBoard::WT_KING]   = "img/assets/wt_king.png";
-    m_chess_piece_images[ChessBoard::WT_QUEEN]  = "img/assets/wt_queen.png";
-    m_chess_piece_images[ChessBoard::WT_BISHOP] = "img/assets/wt_bishop.png";
-    m_chess_piece_images[ChessBoard::WT_KNIGHT] = "img/assets/wt_knight.png";
-    m_chess_piece_images[ChessBoard::WT_CASTLE] = "img/assets/wt_castle.png";
-    m_chess_piece_images[ChessBoard::WT_PAWN]   = "img/assets/wt_pawn.png";
+    m_chess_piece_images[to_int(ChessPiece::NONE)]      = "";
+    m_chess_piece_images[to_int(ChessPiece::WT_KING)]   = "img/assets/wt_king.png";
+    m_chess_piece_images[to_int(ChessPiece::WT_QUEEN)]  = "img/assets/wt_queen.png";
+    m_chess_piece_images[to_int(ChessPiece::WT_BISHOP)] = "img/assets/wt_bishop.png";
+    m_chess_piece_images[to_int(ChessPiece::WT_KNIGHT)] = "img/assets/wt_knight.png";
+    m_chess_piece_images[to_int(ChessPiece::WT_CASTLE)] = "img/assets/wt_castle.png";
+    m_chess_piece_images[to_int(ChessPiece::WT_PAWN)]   = "img/assets/wt_pawn.png";
 
-    m_chess_piece_images[ChessBoard::BK_KING]   = "img/assets/bk_king.png";
-    m_chess_piece_images[ChessBoard::BK_QUEEN]  = "img/assets/bk_queen.png";
-    m_chess_piece_images[ChessBoard::BK_BISHOP] = "img/assets/bk_bishop.png";
-    m_chess_piece_images[ChessBoard::BK_KNIGHT] = "img/assets/bk_knight.png";
-    m_chess_piece_images[ChessBoard::BK_CASTLE] = "img/assets/bk_castle.png";
-    m_chess_piece_images[ChessBoard::BK_PAWN]   = "img/assets/bk_pawn.png";
+    m_chess_piece_images[to_int(ChessPiece::BK_KING)]   = "img/assets/bk_king.png";
+    m_chess_piece_images[to_int(ChessPiece::BK_QUEEN)]  = "img/assets/bk_queen.png";
+    m_chess_piece_images[to_int(ChessPiece::BK_BISHOP)] = "img/assets/bk_bishop.png";
+    m_chess_piece_images[to_int(ChessPiece::BK_KNIGHT)] = "img/assets/bk_knight.png";
+    m_chess_piece_images[to_int(ChessPiece::BK_CASTLE)] = "img/assets/bk_castle.png";
+    m_chess_piece_images[to_int(ChessPiece::BK_PAWN)]   = "img/assets/bk_pawn.png";
 
     clean_board();
 }
@@ -59,11 +59,11 @@ void ChessFieldModel::clean_board()
 
 void ChessFieldModel::make_move(int src_cell, int dst_cell)
 {
-    if( m_chess_board.get_board_piece(7 - src_cell / 8, src_cell % 8) == ChessBoard::NONE ) {
+    if( m_chess_board.get_board_piece(7 - src_cell / 8, src_cell % 8) == ChessPiece::NONE ) {
         return;
     }
-    auto src = std::make_pair(7 - src_cell/8, src_cell%8);
-    auto dst = std::make_pair(7 - dst_cell/8, dst_cell%8);
+    auto src = make_vec2(7 - src_cell/8, src_cell%8);
+    auto dst = make_vec2(7 - dst_cell/8, dst_cell%8);
 
     auto res = m_chess_board.make_move(src, dst);
     if( !res ) {
@@ -137,21 +137,7 @@ QVariantMap ChessFieldModel::get(int row) const
     }
     return res;
 }
-/*
-void ChessFieldModel::setImagePath(int row, const QVariant& val)
-{
-    if( row < 0 || row > m_list.count() ) {
-        return;
-    }
-    m_list[row].second = val.toString();
 
-    QModelIndex index;
-    index.child(row,0);
-    QVector<int> roles(1,IMAGE_PATH);
-
-    emit dataChanged(index, index, roles);
-}
-*/
 QVariant ChessFieldModel::data(const QModelIndex &index, int role) const
 {
     if( index.row() < 0 || index.row() > m_list.count() ) {
@@ -186,16 +172,16 @@ bool ChessFieldModel::setData(const QModelIndex &index, const QVariant &value, i
     }
 }
 
-void ChessFieldModel::update_cells(std::shared_ptr<ChessPieceMove> move)
+void ChessFieldModel::update_cells(std::shared_ptr<ChessMove> move)
 {
     QVector<int> roles(1, IMAGE_PATH);
     const int count = move->changed_cells_count();
     auto cells = move->get_changed_cells();
 
     for(int i=0; i<count; i++) {
-        ChessBoard::ChessPiece cp = cells[i].second;
+        ChessPiece cp = cells[i].second;
         int ind = from_board_to_list(cells[i].first);
-        m_list[ind].second = m_chess_piece_images[cp];
+        m_list[ind].second = m_chess_piece_images[to_int(cp)];
         emit dataChanged(index(ind), index(ind), roles);
     }
 }
@@ -204,7 +190,8 @@ void ChessFieldModel::update_model()
 {
     QList<std::pair<QString,QString> >::iterator iter = m_list.begin();
     for(int i=0; iter != m_list.end(); i++, iter++) {
-        iter->second = m_chess_piece_images[m_chess_board.get_board_piece(7 - i / 8, i % 8)];
+        ChessPiece cp = m_chess_board.get_board_piece(7 - i / 8, i % 8);
+        iter->second = m_chess_piece_images[to_int(cp)];
     }
     QVector<int> roles(1, IMAGE_PATH);
     emit dataChanged(index(0), index(m_list.size()-1), roles);

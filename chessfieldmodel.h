@@ -39,7 +39,7 @@ public:
     virtual bool setData(const QModelIndex &index, const QVariant &value, int role);
     Qt::ItemFlags flags(const QModelIndex &index) const                                 {  Q_UNUSED(index); return Qt::ItemIsEditable;    }
 private:
-    void update_cells(std::shared_ptr<ChessPieceMove> move);
+    void update_cells(std::shared_ptr<ChessMove> move);
     void update_model();
 
 
